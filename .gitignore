@@ -1,0 +1,26 @@
+# Секреты
+.env
+*.json
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Система и редактор
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
