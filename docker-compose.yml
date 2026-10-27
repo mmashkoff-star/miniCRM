@@ -1,0 +1,32 @@
+name: excel-factory
+
+# Хост 8020: 8000 занят у остановленного sceneforge-api и локального uvicorn,
+# 8010/8080 — у mining, 8100 — у sceneforge-frontend.
+services:
+  crm:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: excel-factory-crm
+    ports:
+      - "8020:8000"
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    environment:
+      CRM_DB_PATH: /data/crm.sqlite3
+      PYTHONUNBUFFERED: "1"
+    working_dir: /app
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s

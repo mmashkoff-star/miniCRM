@@ -1,21 +1,26 @@
 """Окно с парой полей: период, подразделение, ответственный → отчёт в Google Таблице.
 
 Запуск:
-    python report_app.py
+    python ui/report_app.py
 """
 
 from __future__ import annotations
 
 import os
 import random
+import sys
 import threading
 import webbrowser
 from collections import Counter
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable
 
 import tkinter as tk
 from tkinter import messagebox, ttk
+
+_PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PROJECT_DIR / "integrations"))
 
 from google_sheets import GoogleSheetsClient, _load_dotenv
 

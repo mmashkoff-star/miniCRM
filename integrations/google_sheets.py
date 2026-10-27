@@ -15,17 +15,20 @@ CRUD-клиент для Google Таблиц через Sheets API v4 (серв�
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 SCOPES = ("https://www.googleapis.com/auth/spreadsheets",)
+AuthMode = Literal["oauth", "service_account"]
 
-DEFAULT_CREDENTIALS_PATH = Path(__file__).resolve().parent / (
+_PROJECT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_CREDENTIALS_PATH = _PROJECT_DIR / "credentials" / (
     "excel-factory-512714-341d64a29ff2.json"
 )
 
@@ -39,6 +42,8 @@ class GoogleSheetsClient:
         credentials_path: str | Path | None = None,
         *,
         default_sheet: str = "Sheet1",
+        auth: AuthMode | None = None,
+        token_path: str | Path | None = None,
     ) -> None:
         if not spreadsheet_id:
             raise ValueError("spreadsheet_id обязателен")
@@ -52,10 +57,19 @@ class GoogleSheetsClient:
         if not self.credentials_path.is_file():
             raise FileNotFoundError(f"JSON-ключ не найден: {self.credentials_path}")
 
-        credentials = service_account.Credentials.from_service_account_file(
-            str(self.credentials_path),
-            scopes=SCOPES,
-        )
+        self.auth_mode: AuthMode = auth or _detect_sheets_auth(self.credentials_path)
+        if self.auth_mode == "oauth":
+            from google_drive import DEFAULT_TOKEN_PATH, _credentials_from_oauth
+
+            credentials = _credentials_from_oauth(
+                self.credentials_path,
+                Path(token_path or os.getenv("GOOGLE_OAUTH_TOKEN_PATH") or DEFAULT_TOKEN_PATH),
+            )
+        else:
+            credentials = service_account.Credentials.from_service_account_file(
+                str(self.credentials_path),
+                scopes=SCOPES,
+            )
         self._service = build("sheets", "v4", credentials=credentials, cache_discovery=False)
         self._values = self._service.spreadsheets().values()
 
@@ -68,7 +82,7 @@ class GoogleSheetsClient:
             return a1_range
         # "A1", "B2:C5" → "Sheet!A1"; голое имя листа ("Invoices") не трогаем
         if any(ch.isdigit() for ch in a1_range):
-            return f"{self.default_sheet}!{a1_range}"
+            return f"{_quote_sheet(self.default_sheet)}!{a1_range}"
         return a1_range
 
     # --- CREATE ---
@@ -316,9 +330,26 @@ class GoogleSheetsClient:
         raise ValueError(f"Лист '{sheet_name}' не найден")
 
 
+def _quote_sheet(name: str) -> str:
+    if name.startswith("'") and name.endswith("'"):
+        return name
+    if name.isascii() and all(ch.isalnum() or ch in "._" for ch in name):
+        return name
+    return "'" + name.replace("'", "''") + "'"
+
+
+def _detect_sheets_auth(path: Path) -> AuthMode:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("type") == "service_account":
+        return "service_account"
+    if "installed" in payload or "web" in payload:
+        return "oauth"
+    return "service_account"
+
+
 def _load_dotenv(path: Path | None = None) -> None:
     """Простой парсер .env без внешних зависимостей."""
-    env_path = path or Path(__file__).resolve().parent / ".env"
+    env_path = path or _PROJECT_DIR / ".env"
     if not env_path.is_file():
         return
     for line in env_path.read_text(encoding="utf-8").splitlines():

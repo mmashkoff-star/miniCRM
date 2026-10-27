@@ -1,22 +1,38 @@
-# Секреты
+# Секреты и локальные настройки
 .env
 *.json
 !.env.example
+google_gui.txt
+credentials/*
+!credentials/.gitkeep
+
+# SQLite CRM
+data/*
+!data/.gitkeep
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
 
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
 .Python
 build/
 dist/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # Виртуальное окружение
 .venv/
 venv/
 env/
+
+# Docker и логи
+*.log
 
 # Система и редактор
 .DS_Store
@@ -24,3 +40,4 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/
+*.swp
